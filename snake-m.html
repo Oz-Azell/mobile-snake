@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Snake Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: linear-gradient(to bottom right, #0f2027, #203a43, #2c5364);
+      color: #f0f0f0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    h1 {
+      margin: 20px 0 10px;
+      font-size: 32px;
+      color: #00ffae;
+      text-shadow: 1px 1px 5px #000;
+    }
+
+    #gameWrapper {
+      position: relative;
+      width: 100%;
+      max-width: 350px;
+      height: 600px;
+      background-color: #1e1e1e;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0, 255, 174, 0.4);
+      overflow: hidden;
+      border: 2px solid #00ffae;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      background-color: #000;
+      display: block;
+    }
+
+    .autoplay-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 6px 12px;
+      font-size: 14px;
+      font-weight: bold;
+      background: #1c1c1c;
+      color: #00ffae;
+      border: 2px solid #00ffae;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 2;
+      transition: all 0.2s ease;
+    }
+
+    .autoplay-btn:hover {
+      background-color: #00ffae;
+      color: #000;
+      box-shadow: 0 0 10px #00ffae;
+    }
+
+    .controls {
+      position: absolute;
+      bottom: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 3;
+    }
+
+    .btn-row {
+      display: flex;
+      justify-content: center;
+      margin: 5px 0;
+    }
+
+    .btn {
+      width: 60px;
+      height: 40px;
+      margin: 0 6px;
+      font-size: 18px;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      background-color: #ffffff18;
+      color: #00ffae;
+      box-shadow: 0 4px 8px rgba(0, 255, 174, 0.2);
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+    }
+
+    .btn:hover {
+      background: #00ffae6e;
+      color: #000;
+      box-shadow: 0 0 10px #00ffae;
+    }
+
+    .play-again-btn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 4;
+      width: 150px;
+      height: 50px;
+      font-size: 20px;
+      background: #00ffae;
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      box-shadow: 0 0 15px #00ffae;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: none;
+    }
+
+    .play-again-btn:hover {
+      background: #00c38e;
+      box-shadow: 0 0 25px #00ffae;
+    }
+
+    #score {
+      margin-top: 15px;
+      font-size: 20px;
+      font-weight: bold;
+      color: #ffffff;
+      text-shadow: 0 0 5px #00ffae;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Snake Game</h1>
+
+<!-- ✅ Audio -->
+<audio id="gameOverSound" src="music/gameover.mp3" preload="auto"></audio>
+<audio id="bgMusic" src="music/bg-music.mp3" loop preload="auto"></audio>
+
+<div id="gameWrapper">
+  <canvas id="gameCanvas" width="350" height="600"></canvas>
+  <button class="autoplay-btn" id="autoToggleBtn" onclick="toggleAutoPlay()">AUTOPLAY: OFF</button>
+  <button id="playAgainBtn" class="btn play-again-btn" onclick="resetGame()">Play Again</button>
+  <div class="controls">
+    <div class="btn-row">
+      <button class="btn" onclick="setDir(0, -1)">↑</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="setDir(-1, 0)">←</button>
+      <button class="btn" onclick="setDir(0, 1)">↓</button>
+      <button class="btn" onclick="setDir(1, 0)">→</button>
+    </div>
+  </div>
+</div>
+<div id="score">Score: 0</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const gameOverSound = document.getElementById("gameOverSound");
+const bgMusic = document.getElementById("bgMusic");
+
+let snake = [{ x: 10, y: 10 }];
+let direction = { x: 0, y: 0 };
+let food = { x: 15, y: 15 };
+let score = 0;
+let aiActive = false;
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  snake.forEach((segment, index) => {
+    ctx.fillStyle = index === 0 ? 'limegreen' : 'lightgreen';
+    ctx.fillRect(segment.x * 20, segment.y * 20, 18, 18);
+    ctx.strokeStyle = '#003300';
+    ctx.strokeRect(segment.x * 20, segment.y * 20, 18, 18);
+  });
+
+  ctx.fillStyle = 'red';
+  ctx.fillRect(food.x * 20, food.y * 20, 18, 18);
+}
+
+function update() {
+  const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+
+  if (head.x === food.x && head.y === food.y) {
+    score++;
+    document.getElementById('score').innerText = `Score: ${score}`;
+    snake.unshift(head);
+    placeFood();
+  } else {
+    snake.unshift(head);
+    snake.pop();
+  }
+
+  if (
+    head.x < 0 || head.x >= canvas.width / 20 ||
+    head.y < 0 || head.y >= canvas.height / 20 ||
+    collisionWithSelf(head)
+  ) {
+    document.getElementById('playAgainBtn').style.display = 'block';
+    clearInterval(gameInterval);
+    bgMusic.pause();
+    bgMusic.currentTime = 0;
+    gameOverSound.play();
+  }
+}
+
+function collisionWithSelf(head) {
+  return snake.slice(1).some(seg => seg.x === head.x && seg.y === head.y);
+}
+
+function placeFood() {
+  food.x = Math.floor(Math.random() * (canvas.width / 20));
+  food.y = Math.floor(Math.random() * (canvas.height / 20));
+}
+
+function changeDirection(event) {
+  if (!aiActive) {
+    switch (event.key) {
+      case 'ArrowUp': if (direction.y === 0) setDir(0, -1); break;
+      case 'ArrowDown': if (direction.y === 0) setDir(0, 1); break;
+      case 'ArrowLeft': if (direction.x === 0) setDir(-1, 0); break;
+      case 'ArrowRight': if (direction.x === 0) setDir(1, 0); break;
+    }
+  }
+}
+
+function resetGame() {
+  snake = [{ x: 10, y: 10 }];
+  direction = { x: 0, y: 0 };
+  score = 0;
+  document.getElementById('score').innerText = 'Score: 0';
+  document.getElementById('playAgainBtn').style.display = 'none';
+  placeFood();
+  gameInterval = setInterval(gameLoop, 100);
+  bgMusic.currentTime = 0;
+  bgMusic.play();
+}
+
+function aiMove() {
+  const head = snake[0];
+  const target = food;
+  let bestMove = { x: 0, y: 0 };
+
+  let moves = [
+    { x: 1, y: 0 },
+    { x: -1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 0, y: -1 }
+  ];
+
+  moves = moves.filter(move => {
+    const newHead = { x: head.x + move.x, y: head.y + move.y };
+    return !collisionWithSelf(newHead);
+  });
+
+  let bestDistance = Infinity;
+  moves.forEach(move => {
+    const newHead = { x: head.x + move.x, y: head.y + move.y };
+    const distance = Math.abs(newHead.x - target.x) + Math.abs(newHead.y - target.y);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestMove = move;
+    }
+  });
+
+  direction = bestMove;
+}
+
+function setDir(x, y) {
+  if (!aiActive && (direction.x !== x || direction.y !== y)) {
+    direction = { x, y };
+  }
+}
+
+function toggleAutoPlay() {
+  aiActive = !aiActive;
+  const btn = document.getElementById('autoToggleBtn');
+  btn.innerText = aiActive ? 'AUTOPLAY: ON' : 'AUTOPLAY: OFF';
+}
+
+let gameInterval = setInterval(gameLoop, 100);
+
+function gameLoop() {
+  if (aiActive) aiMove();
+  update();
+  draw();
+}
+
+document.addEventListener('keydown', changeDirection);
+placeFood();
+
+// 🔓 Unlock sound on first interaction
+document.addEventListener('keydown', () => {
+  bgMusic.play().catch(() => {});
+  gameOverSound.play().catch(() => {});
+}, { once: true });
+
+</script>
+</body>
+</html>
